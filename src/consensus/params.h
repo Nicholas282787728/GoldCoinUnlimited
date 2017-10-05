@@ -61,7 +61,16 @@ struct Params {
     int64_t nPowTargetSpacing;
     int64_t nPowTargetTimespan;
     int64_t DifficultyAdjustmentInterval() const { return nPowTargetTimespan / nPowTargetSpacing; }
-    int64_t SizeForkExpiration() const { return 1514764800; } // BU (classic compatibility) 2018-01-01 00:00:00 GMT
+    int64_t SizeForkExpiration() const { return 2514764800; } // BU (classic compatibility) 2018-01-01 00:00:00 GMT
+
+    int64_t julyFork;
+    int64_t novemberFork;
+    int64_t novemberFork2;
+    int64_t mayFork;
+    int64_t febFork;
+    int64_t octoberFork;
+    int64_t julyFork2;
+
 };
 } // namespace Consensus
 
