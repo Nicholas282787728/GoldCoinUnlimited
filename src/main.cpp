@@ -87,6 +87,11 @@ bool fEnableReplacement = DEFAULT_ENABLE_REPLACEMENT;
 
 CFeeRate minRelayTxFee = CFeeRate(DEFAULT_MIN_RELAY_TX_FEE);
 
+//GoldCoin
+bool hardForkedJuly = false;
+bool hardForkedNovember = false;
+//end goldcoin
+
 // BU: Move global objects to a single file
 extern CTxMemPool mempool;
 
@@ -133,7 +138,7 @@ static void CheckBlockIndex(const Consensus::Params &consensusParams);
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "Bitcoin Signed Message:\n";
+const string strMessageMagic = "GoldCoin (GLD) Signed Message:\n";
 
 extern CStatHistory<uint64_t> nTxValidationTime;
 extern CStatHistory<uint64_t> nBlockValidationTime;
@@ -1929,7 +1934,7 @@ bool ReadBlockFromDisk(CBlock &block, const CDiskBlockPos &pos, const Consensus:
     }
 
     // Check the header
-    if (!CheckProofOfWork(block.GetHash(), block.nBits, consensusParams))
+    if (!CheckProofOfWork(block.GetPoWHash(), block.nBits, consensusParams))
         return error("ReadBlockFromDisk: Errors in block header at %s", pos.ToString());
 
     return true;
@@ -1953,9 +1958,34 @@ CAmount GetBlockSubsidy(int nHeight, const Consensus::Params &consensusParams)
         return 0;
 
     CAmount nSubsidy = 50 * COIN;
-    // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
-    nSubsidy >>= halvings;
-    return nSubsidy;
+
+    if (nHeight > 0 && nHeight <= 200)
+    {
+        nSubsidy = 10000 * COIN;
+    }
+    else if (nHeight > 200 && nHeight <= 2200)
+    {
+        nSubsidy = 1000 * COIN;
+    }
+    else if (nHeight > 2200 && nHeight < consensusParams.julyFork)
+    {
+        nSubsidy = 500 * COIN;
+    }
+    else if (nHeight >= consensusParams.julyFork && nHeight <= 26325000)
+    {
+        hardForkedJuly = true;
+        if (nHeight >= consensusParams.febFork) {
+            nSubsidy = (int64_t)(50.0 / (1.1 + 0.49 * ((nHeight + 4884000 - consensusParams.julyFork) / 262800))) * COIN;
+        } else {
+            nSubsidy = (int64_t)(50.0 / (1.1 + 0.49 * ((nHeight - consensusParams.julyFork) / 262800))) * COIN;
+        }
+        if (nHeight >= consensusParams.novemberFork) {
+            hardForkedNovember = true;
+        }
+    } else {
+        nSubsidy = 0;
+    }
+return nSubsidy;
 }
 
 bool IsInitialBlockDownload()
@@ -3934,7 +3964,7 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 bool CheckBlockHeader(const CBlockHeader &block, CValidationState &state, bool fCheckPOW)
 {
     // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetHash(), block.nBits, Params().GetConsensus()))
+    if (fCheckPOW && !CheckProofOfWork(block.GetPoWHash(), block.nBits, Params().GetConsensus()))
         return state.DoS(50, error("CheckBlockHeader(): proof of work failed"), REJECT_INVALID, "high-hash");
 
     // Check timestamp
@@ -4069,6 +4099,8 @@ bool ContextualCheckBlockHeader(const CBlockHeader &block, CValidationState &sta
     if (block.nVersion < 4 &&
         IsSuperMajority(4, pindexPrev, consensusParams.nMajorityRejectBlockOutdated, consensusParams))
         return state.Invalid(error("%s : rejected nVersion=3 block", __func__), REJECT_OBSOLETE, "bad-version");
+
+
 
     return true;
 }
